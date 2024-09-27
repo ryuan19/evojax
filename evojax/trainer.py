@@ -113,20 +113,28 @@ class Trainer(object):
     def run(self, demo_mode: bool = False) -> float:
         """Start the training / test process."""
 
-        if self.model_dir is not None:
-            params, obs_params = load_model(model_dir=self.model_dir)
+        if self.model_dir is not None: #for eval stuff, starts as none
+            nodes, weights, activations, obs_params = load_model(model_dir=self.model_dir)
+            #params, obs_params = load_model(model_dir=self.model_dir)
             self.sim_mgr.obs_params = obs_params
             self._logger.info(
                 'Loaded model parameters from {}.'.format(self.model_dir))
         else:
-            params = None
+            nodes, weights, activations = None, None, None
+            # params = None
 
         if demo_mode:
-            if params is None:
-                raise ValueError('No policy parameters to evaluate.')
+
+            if weights is None:
+                raise ValueError('No policy parameters to evaluate. No weight matrix.')
+            if activations is None:
+                raise ValueError('No policy parameters to evaluate. No activation matrix.')
             self._logger.info('Start to test the parameters.')
+            # scores = np.array(
+            #     self.sim_mgr.eval_params(params=params, test=True)[0])
             scores = np.array(
-                self.sim_mgr.eval_params(params=params, test=True)[0])
+                self.sim_mgr.eval_params(nodes=nodes, weights=weights, activations=activations, test=True)[0])
+
             self._logger.info(
                 '[TEST] #tests={0}, max={1:.4f}, avg={2:.4f}, min={3:.4f}, '
                 'std={4:.4f}'.format(scores.size, scores.max(), scores.mean(),
@@ -136,28 +144,38 @@ class Trainer(object):
             self._logger.info(
                 'Start to train for {} iterations.'.format(self._max_iter))
 
-            if params is not None:
+            #if params is not None:
+            if weights is not None and activations is not None:
                 # Continue training from the breakpoint.
-                self.solver.best_params = params
+
+                #from neat.py solver
+                bestw, besta = weights, activations
+                self.solver.best_params = (bestw, besta)
 
             best_score = -float('Inf')
 
             for i in range(self._max_iter):
                 start_time = time.perf_counter()
-                params = self.solver.ask()
+                tuple_from_ask = self.solver.ask()
+                nodes, weights, activations = tuple_from_ask[0], tuple_from_ask[1], tuple_from_ask[2]
+
+                #starting params should be initialized now!
                 self._logger.debug('solver.ask time: {0:.4f}s'.format(
                     time.perf_counter() - start_time))
 
                 start_time = time.perf_counter()
+
                 scores, bds = self.sim_mgr.eval_params(
-                    params=params, test=False)
+                    nodes=nodes, weights=weights, activations=activations, test=False)
+                # scores, bds = self.sim_mgr.eval_params(
+                #     params=params, test=False)
                 self._logger.debug('sim_mgr.eval_params time: {0:.4f}s'.format(
                     time.perf_counter() - start_time))
 
                 start_time = time.perf_counter()
                 if isinstance(self.solver, QualityDiversityMethod):
                     self.solver.observe_bd(bds)
-                self.solver.tell(fitness=scores)
+                self.solver.tell(reward=scores)
                 self._logger.debug('solver.tell time: {0:.4f}s'.format(
                     time.perf_counter() - start_time))
 
@@ -171,9 +189,13 @@ class Trainer(object):
                     self._log_scores_fn(i, scores, "train")
 
                 if i > 0 and i % self._test_interval == 0:
-                    best_params = self.solver.best_params
+                    bestWeights, bestActivations = self.solver.best_params
+                    bestnodes = len(bestWeights) #num nodes
                     test_scores, _ = self.sim_mgr.eval_params(
-                        params=best_params, test=True)
+                            nodes=bestnodes, weights = bestWeights, activations = bestActivations, test=True)
+                    #best_params = self.solver.best_params
+                    # test_scores, _ = self.sim_mgr.eval_params(
+                    #     params=best_params, test=True)
                     self._logger.info(
                         '[TEST] Iter={0}, #tests={1}, max={2:.4f}, avg={3:.4f}, '
                         'min={4:.4f}, std={5:.4f}'.format(
@@ -185,16 +207,17 @@ class Trainer(object):
                     save_model(
                         model_dir=self._log_dir,
                         model_name='iter_{}'.format(i),
-                        params=best_params,
+                        nodes=bestnodes, weights = bestWeights, activations = bestActivations,
                         obs_params=self.sim_mgr.obs_params,
                         best=mean_test_score > best_score,
                     )
                     best_score = max(best_score, mean_test_score)
 
             # Test and save the final model.
-            best_params = self.solver.best_params
+            bestWeights, bestActivations = self.solver.best_params
+            bestnodes = len(bestWeights)
             test_scores, _ = self.sim_mgr.eval_params(
-                params=best_params, test=True)
+                nodes=bestnodes, weights=bestWeights, activations=bestActivations, test=True)
             self._logger.info(
                 '[TEST] Iter={0}, #tests={1}, max={2:.4f}, avg={3:.4f}, '
                 'min={4:.4f}, std={5:.4f}'.format(
@@ -204,7 +227,7 @@ class Trainer(object):
             save_model(
                 model_dir=self._log_dir,
                 model_name='final',
-                params=best_params,
+                nodes=bestnodes, weights = bestWeights, activations = bestActivations,
                 obs_params=self.sim_mgr.obs_params,
                 best=mean_test_score > best_score,
             )

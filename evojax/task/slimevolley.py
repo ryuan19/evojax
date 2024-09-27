@@ -1,3 +1,5 @@
+#fixed some variable getting
+
 # Copyright 2022 The EvoJAX Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +47,9 @@ import jax
 import jax.numpy as jnp
 from jax import random
 from flax.struct import dataclass
+
+import sys
+# sys.path.append('/content/drive/MyDrive/evojax') #use in colab
 
 from evojax.task.base import TaskState
 from evojax.task.base import VectorizedTask
@@ -335,8 +340,20 @@ class Particle:
         self.c = c
 
     def display(self, canvas):
-        return circle(canvas, toX(float(self.p.x)), toY(float(self.p.y)),
-                      toP(float(self.p.r)), color=self.c)
+        x_scalar = self.p.x.item() if self.p.x.size == 1 else float(self.p.x)
+        y_scalar = self.p.y.item() if self.p.y.size == 1 else float(self.p.y)
+
+        # Now `x_scalar` and `y_scalar` are guaranteed to be scalars
+        # Convert these to coordinates using toX and toY functions
+        x_pixel = toX(x_scalar)
+        y_pixel = toY(y_scalar)
+
+        r_scalar = float(self.p.r[0]) if self.p.r.ndim > 0 else float(self.p.r)
+        # Retrieve the radius assuming it's already a scalar
+        r_pixel = toP(float(r_scalar))
+
+        # Call the circle drawing function with these scalar values
+        return circle(canvas, x_pixel, y_pixel, r_pixel, color=self.c)
 
     def move(self):
         self.p = ParticleState(self.p.x+self.p.vx*TIMESTEP,
@@ -591,13 +608,15 @@ class Agent:
         return getObsArray(self.state)
 
     def display(self, canvas, ball_x, ball_y):
-        bx = float(ball_x)
-        by = float(ball_y)
+        bx = float(ball_x[0]) if ball_x.ndim > 0 else float(ball_x)
+        by = float(ball_y[0]) if ball_y.ndim > 0 else float(ball_y)
         p = self.p
-        x = float(p.x)
-        y = float(p.y)
-        r = float(p.r)
-        direction = int(p.direction)
+
+        # Ensure each variable is treated as a scalar
+        x = float(p.x[0]) if p.x.ndim > 0 else float(p.x)
+        y = float(p.y[0]) if p.y.ndim > 0 else float(p.y)
+        r = float(p.r[0]) if p.r.ndim > 0 else float(p.r)
+        direction = int(p.direction[0]) if p.direction.ndim > 0 else int(p.direction)
 
         angle = math.pi * 60 / 180
         if direction == 1:
@@ -607,27 +626,27 @@ class Agent:
 
         canvas = half_circle(canvas, toX(x), toY(y), toP(r), color=self.c)
 
-        # track ball with eyes (replace with observed info later):
+        # Track ball with eyes (replace with observed info later):
         c = math.cos(angle)
         s = math.sin(angle)
-        ballX = bx-(x+(0.6)*r*c)
-        ballY = by-(y+(0.6)*r*s)
+        ballX = bx - (x + (0.6) * r * c)
+        ballY = by - (y + (0.6) * r * s)
 
-        dist = math.sqrt(ballX*ballX+ballY*ballY)
-        eyeX = ballX/dist
-        eyeY = ballY/dist
+        dist = math.sqrt(ballX ** 2 + ballY ** 2)
+        eyeX = ballX / dist
+        eyeY = ballY / dist
 
-        canvas = circle(canvas, toX(x+(0.6)*r*c), toY(y+(0.6)*r*s),
-                        toP(r)*0.3, color=(255, 255, 255))
-        canvas = circle(canvas, toX(x+(0.6)*r*c+eyeX*0.15*r),
-                        toY(y+(0.6)*r*s+eyeY*0.15*r), toP(r)*0.1,
+        canvas = circle(canvas, toX(x + (0.6) * r * c), toY(y + (0.6) * r * s),
+                        toP(r) * 0.3, color=(255, 255, 255))
+        canvas = circle(canvas, toX(x + (0.6) * r * c + eyeX * 0.15 * r),
+                        toY(y + (0.6) * r * s + eyeY * 0.15 * r), toP(r) * 0.1,
                         color=(0, 0, 0))
 
-        # draw coins (lives) left
-        num_lives = int(p.life)
+        # Draw coins (lives) left
+        num_lives = int(p.life[0]) if p.life.ndim > 0 else int(p.life)
         for i in range(1, num_lives):
-            canvas = circle(canvas, toX(direction*(REF_W/2+0.5-i*2.)),
-                            WINDOW_HEIGHT-toY(1.5), toP(0.5),
+            canvas = circle(canvas, toX(direction * (REF_W / 2 + 0.5 - i * 2.)),
+                            WINDOW_HEIGHT - toY(1.5), toP(0.5),
                             color=COIN_COLOR)
 
         return canvas
@@ -901,3 +920,4 @@ class SlimeVolley(VectorizedTask):
         canvas = game.display()
         img = Image.fromarray(canvas)
         return img
+

@@ -72,7 +72,7 @@ def create_logger(name: str,
     return logger
 
 
-def load_model(model_dir: str) -> Tuple[np.ndarray, np.ndarray]:
+def load_model(model_dir: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Load policy parameters from the specified directory.
 
     Args:
@@ -86,14 +86,19 @@ def load_model(model_dir: str) -> Tuple[np.ndarray, np.ndarray]:
     if not os.path.exists(model_file):
         raise ValueError('Model file {} does not exist.')
     with np.load(model_file) as data:
-        params = data['params']
-        obs_params = data['obs_params']
-    return params, obs_params
+        nodes = data["nodes"]
+        weights = data["weights"]
+        activations = data["activations"]
+        obs_params = data["obs_params"]
+    return nodes, weights, activations, obs_params
 
 
 def save_model(model_dir: str,
                model_name: str,
-               params: Union[np.ndarray, jnp.ndarray],
+               #params: Union[np.ndarray, jnp.ndarray],
+               nodes: Union[np.ndarray, jnp.ndarray],
+               weights: Union[np.ndarray, jnp.ndarray],
+                activations: Union[np.ndarray, jnp.ndarray],
                obs_params: Union[np.ndarray, jnp.ndarray] = None,
                best: bool = False) -> None:
     """Save policy parameters to the specified directory.
@@ -107,14 +112,25 @@ def save_model(model_dir: str,
     """
 
     model_file = os.path.join(model_dir, '{}.npz'.format(model_name))
-    np.savez(model_file,
-             params=np.array(params),
-             obs_params=np.array(obs_params))
+    np.savez(
+        model_file,
+        nodes=np.array(nodes),
+        weights=np.array(weights),
+        activations=np.array(activations),
+        obs_params=np.array(obs_params),
+    )
     if best:
         model_file = os.path.join(model_dir, 'best.npz')
-        np.savez(model_file,
-                 params=np.array(params),
-                 obs_params=np.array(obs_params))
+        np.savez(
+            model_file,
+            nodes=np.array(nodes),
+            weights=np.array(weights),
+            activations=np.array(activations),
+            obs_params=np.array(obs_params),
+        )
+        # np.savez(model_file,
+        #          params=np.array(params),
+        #          obs_params=np.array(obs_params))
 
 
 def save_lattices(log_dir: str,

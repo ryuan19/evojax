@@ -35,7 +35,10 @@ https://github.com/hardmaru/slimevolleygym
 
 Example command to run this script: `python train_slimevolley.py --gpu-id=0`
 """
+import sys
+# sys.path.append('/content/drive/MyDrive/evojax') # to use in colab
 
+import json
 import argparse
 import os
 import shutil
@@ -47,7 +50,10 @@ from evojax.algo import CMA
 from evojax import Trainer
 from evojax import util
 
+from myneat.ann import NeatPolicy
+from myneat.neat import NeatAlgo, loadHyp
 
+#imports make it past here
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -55,11 +61,11 @@ def parse_args():
     parser.add_argument(
         '--hidden-size', type=int, default=20, help='Policy hidden size.')
     parser.add_argument(
-        '--num-tests', type=int, default=100, help='Number of test rollouts.')
+        '--num-tests', type=int, default=10, help='Number of test rollouts.')
     parser.add_argument(
-        '--n-repeats', type=int, default=16, help='Training repetitions.')
+        '--n-repeats', type=int, default=2, help='Training repetitions.') #default 16 dont work, need sq matrix
     parser.add_argument(
-        '--max-iter', type=int, default=500, help='Max training iterations.')
+        '--max-iter', type=int, default=20, help='Max training iterations.')
     parser.add_argument(
         '--test-interval', type=int, default=50, help='Test interval.')
     parser.add_argument(
@@ -72,8 +78,23 @@ def parse_args():
         '--gpu-id', type=str, help='GPU(s) to use.')
     parser.add_argument(
         '--debug', action='store_true', help='Debug mode.')
+    parser.add_argument(
+        '--hyp-path', type=str, default="", help='Path to hyperparams')
     config, _ = parser.parse_known_args()
     return config
+
+def update_hyp_slime(hyp_filepath):
+  with open(hyp_filepath) as data_file: hyp = json.load(data_file)
+  #default settings and slime env settings
+  hyp['ann_nInput']   = 12
+  hyp['ann_nOutput']  = 3
+  hyp['ann_initAct']  = 0 #first one is just 0
+  hyp['ann_absWCap']  = 2.0
+  hyp['ann_mutSigma'] = hyp['ann_absWCap'] * 0.2
+  #
+  # hyp['ann_layers']   = task.layers # if fixed toplogy is used
+  hyp['ann_actRange'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  return hyp
 
 
 def main(config):
@@ -88,19 +109,25 @@ def main(config):
     max_steps = 3000
     train_task = SlimeVolley(test=False, max_steps=max_steps)
     test_task = SlimeVolley(test=True, max_steps=max_steps)
-    policy = MLPPolicy(
-        input_dim=train_task.obs_shape[0],
-        hidden_dims=[config.hidden_size, ],
-        output_dim=train_task.act_shape[0],
-        output_act_fn='tanh',
-    )
-    solver = CMA(
-        pop_size=config.pop_size,
-        param_size=policy.num_params,
-        init_stdev=config.init_std,
-        seed=config.seed,
-        logger=logger,
-    )
+    # policy = MLPPolicy(
+    #     input_dim=train_task.obs_shape[0],
+    #     hidden_dims=[config.hidden_size, ],
+    #     output_dim=train_task.act_shape[0],
+    #     output_act_fn='tanh',
+    # )
+    # solver = CMA(
+    #     pop_size=config.pop_size,
+    #     param_size=policy.num_params,
+    #     init_stdev=config.init_std,
+    #     seed=config.seed,
+    #     logger=logger,
+    # )
+    #hyp = loadHyp(config.hyp_path) #dont needa load env
+    hyp = update_hyp_slime(config.hyp_path)
+    print(hyp)
+    policy = NeatPolicy()
+    solver = NeatAlgo(hyp) #edit hyp and load, hyperparam file
+    print("Onto Trainer...")
     # Train.
     trainer = Trainer(
         policy=policy,

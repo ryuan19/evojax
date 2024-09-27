@@ -166,8 +166,10 @@ class SimManager(object):
                     self._n_evaluations, self._num_device))
 
         def step_once(carry, input_data, task):
-            (task_state, policy_state, params, obs_params,
+            
+            (task_state, policy_state, nodes, weights, activations, obs_params,
              accumulated_reward, valid_mask) = carry
+            
             if task.multi_agent_training:
                 num_tasks, num_agents = task_state.obs.shape[:2]
                 task_state = task_state.replace(
@@ -176,7 +178,8 @@ class SimManager(object):
             normed_obs = self.obs_normalizer.normalize_obs(org_obs, obs_params)
             task_state = task_state.replace(obs=normed_obs)
             actions, policy_state = policy_net.get_actions(
-                task_state, params, policy_state)
+                task_state, nodes, weights, activations, policy_state)
+            
             if task.multi_agent_training:
                 task_state = task_state.replace(
                     obs=task_state.obs.reshape(
@@ -189,20 +192,22 @@ class SimManager(object):
                 done = jnp.repeat(done, num_agents, axis=0)
             accumulated_reward = accumulated_reward + reward * valid_mask
             valid_mask = valid_mask * (1 - done.ravel())
-            return ((task_state, policy_state, params, obs_params,
+            return ((task_state, policy_state, nodes, weights, activations, obs_params,
                      accumulated_reward, valid_mask),
                     (org_obs, valid_mask))
 
-        def rollout(task_states, policy_states, params, obs_params,
+        def rollout(task_states, policy_states, nodes, weights, activations, obs_params,
                     step_once_fn, max_steps):
-            accumulated_rewards = jnp.zeros(params.shape[0])
-            valid_masks = jnp.ones(params.shape[0])
-            ((task_states, policy_states, params, obs_params,
+            accumulated_rewards = jnp.zeros(nodes.shape[0])
+            
+            valid_masks = jnp.ones(nodes.shape[0])
+            ((task_states, policy_states, nodes, weights, activations, obs_params,
               accumulated_rewards, valid_masks),
              (obs_set, obs_mask)) = jax.lax.scan(
                 step_once_fn,
-                (task_states, policy_states, params, obs_params,
+                (task_states, policy_states, nodes, weights, activations, obs_params,
                  accumulated_rewards, valid_masks), (), max_steps)
+            
             return accumulated_rewards, obs_set, obs_mask, task_states
 
         self._policy_reset_fn = jax.jit(policy_net.reset)
@@ -241,8 +246,10 @@ class SimManager(object):
             self._valid_rollout_fn = jax.jit(jax.pmap(
                 self._valid_rollout_fn, in_axes=(0, 0, 0, None)))
 
-    def eval_params(self,
-                    params: jnp.ndarray,
+    def eval_params(self, #changed params in ask/tell interface
+                    nodes: jnp.ndarray,
+                    weights: jnp.ndarray,
+                    activations: jnp.ndarray,
                     test: bool) -> Tuple[jnp.ndarray, TaskState]:
         """Evaluate population parameters or test the best parameter.
 
@@ -253,12 +260,14 @@ class SimManager(object):
             An array of fitness scores.
         """
         if self._use_for_loop:
-            return self._for_loop_eval(params, test)
+            return self._for_loop_eval(nodes, weights, activations, test)
         else:
-            return self._scan_loop_eval(params, test)
+            return self._scan_loop_eval(nodes, weights, activations, test)
 
     def _for_loop_eval(self,
-                       params: jnp.ndarray,
+                       nodes: jnp.ndarray,
+                       weights: jnp.ndarray,
+                       activations: jnp.ndarray,
                        test: bool) -> Tuple[jnp.ndarray, TaskState]:
         """Rollout using for loop (no multi-device or ma_training yet)."""
         policy_reset_func = self._policy_reset_fn
@@ -268,15 +277,21 @@ class SimManager(object):
             task_reset_func = self._valid_reset_fn
             task_step_func = self._valid_step_fn
             task_max_steps = self._valid_max_steps
-            params = duplicate_params(
-                params[None, :], self._n_evaluations, False)
+            # params = duplicate_params(
+            #     params[None, :], self._n_evaluations, False)
+            nodes = duplicate_params(nodes[None, :], self._n_evaluations, False)
+            weights = duplicate_params(weights[None, :], self._n_evaluations, False)
+            activations = duplicate_params(activations[None, :], self._n_evaluations, False)
         else:
             n_repeats = self._n_repeats
             task_reset_func = self._train_reset_fn
             task_step_func = self._train_step_fn
             task_max_steps = self._train_max_steps
-
-        params = duplicate_params(params, n_repeats, self._ma_training)
+        #edit params
+        nodes = duplicate_params(nodes, n_repeats, self._ma_training) #self._ma_training usually false
+        weights = duplicate_params(weights, n_repeats, self._ma_training)
+        activations = duplicate_params(activations, n_repeats, self._ma_training)
+        # params = duplicate_params(params, n_repeats, self._ma_training)
 
         # Start rollout.
         self._key, reset_keys = get_task_reset_keys(
@@ -284,14 +299,15 @@ class SimManager(object):
             self._ma_training)
         task_state = task_reset_func(reset_keys)
         policy_state = policy_reset_func(task_state)
-        scores = jnp.zeros(params.shape[0])
-        valid_mask = jnp.ones(params.shape[0])
+        scores = jnp.zeros(nodes.shape[0]) #nodes is basically new params but need weights + activations
+        valid_mask = jnp.ones(nodes.shape[0])
         start_time = time.perf_counter()
         rollout_steps = 0
         sim_steps = 0
         for i in range(task_max_steps):
-            actions, policy_state = policy_act_func(
-                task_state, params, policy_state)
+            # actions, policy_state = policy_act_func(
+            #     task_state, params, policy_state)
+            actions, policy_state = policy_act_func(task_state, nodes, weights, activations, policy_state)
             task_state, reward, done = task_step_func(task_state, actions)
             scores, valid_mask = update_score_and_mask(
                 scores, reward, valid_mask, done)
@@ -307,7 +323,9 @@ class SimManager(object):
         return report_score(scores, n_repeats), task_state
 
     def _scan_loop_eval(self,
-                        params: jnp.ndarray,
+                        nodes: jnp.ndarray,
+                        weights: jnp.ndarray,
+                        activations: jnp.ndarray,
                         test: bool) -> Tuple[jnp.ndarray, TaskState]:
         """Rollout using jax.lax.scan."""
         policy_reset_func = self._policy_reset_fn
@@ -315,13 +333,23 @@ class SimManager(object):
             n_repeats = self._test_n_repeats
             task_reset_func = self._valid_reset_fn
             rollout_func = self._valid_rollout_fn
-            params = duplicate_params(
-                params[None, :], self._n_evaluations, False)
+            #print(nodes,self._n_evaluations,"nodes")
+            if not isinstance(nodes, int):
+                nodes = duplicate_params(nodes[None, :],self._n_evaluations,False)
+            else:
+                nodes = duplicate_params(nodes,self._n_evaluations,False)
+
+            weights = duplicate_params(weights[None, :], self._n_evaluations, False)
+            #print(activations, "check")
+            activations = duplicate_params(activations[None, :], self._n_evaluations, False)
+
+            # params = duplicate_params(
+            #     params[None, :], self._n_evaluations, False)
         else:
             n_repeats = self._n_repeats
             task_reset_func = self._train_reset_fn
             rollout_func = self._train_rollout_fn
-
+        
         # Suppose pop_size=2 and n_repeats=3.
         # For multi-agents training, params become
         #   a1, a2, ..., an  (individual 1 params)
@@ -337,7 +365,12 @@ class SimManager(object):
         #   b1, b2, ..., bn  (individual 2 params)
         #   b1, b2, ..., bn  (individual 2 params)
         #   b1, b2, ..., bn  (individual 2 params)
-        params = duplicate_params(params, n_repeats, self._ma_training)
+
+        nodes = duplicate_params(nodes, n_repeats, self._ma_training)
+        weights = duplicate_params(weights, n_repeats, self._ma_training)
+        activations = duplicate_params(activations, n_repeats, self._ma_training)
+      
+        # params = duplicate_params(params, n_repeats, self._ma_training)
 
         self._key, reset_keys = get_task_reset_keys(
             self._key, test, self._pop_size, self._n_evaluations, n_repeats,
@@ -353,7 +386,8 @@ class SimManager(object):
 
         # Do the rollouts.
         scores, all_obs, masks, final_states = rollout_func(
-            task_state, policy_state, params, self.obs_params)
+            task_state, policy_state, nodes, weights, activations, self.obs_params
+            )
         if self._num_device > 1:
             all_obs = reshape_data_from_pmap(all_obs)
             masks = reshape_data_from_pmap(masks)
