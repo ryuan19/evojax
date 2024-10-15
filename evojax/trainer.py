@@ -117,6 +117,7 @@ class Trainer(object):
             nodes, weights, activations, obs_params = load_model(model_dir=self.model_dir)
             #params, obs_params = load_model(model_dir=self.model_dir)
             self.sim_mgr.obs_params = obs_params
+
             self._logger.info(
                 'Loaded model parameters from {}.'.format(self.model_dir))
         else:
@@ -133,7 +134,7 @@ class Trainer(object):
             # scores = np.array(
             #     self.sim_mgr.eval_params(params=params, test=True)[0])
             scores = np.array(
-                self.sim_mgr.eval_params(nodes=nodes, weights=weights, activations=activations, test=True)[0])
+                self.sim_mgr.eval_params(nodes=int(nodes), weights=weights, activations=activations, test=True)[0])
 
             self._logger.info(
                 '[TEST] #tests={0}, max={1:.4f}, avg={2:.4f}, min={3:.4f}, '

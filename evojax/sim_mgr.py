@@ -166,10 +166,10 @@ class SimManager(object):
                     self._n_evaluations, self._num_device))
 
         def step_once(carry, input_data, task):
-            
+
             (task_state, policy_state, nodes, weights, activations, obs_params,
              accumulated_reward, valid_mask) = carry
-            
+
             if task.multi_agent_training:
                 num_tasks, num_agents = task_state.obs.shape[:2]
                 task_state = task_state.replace(
@@ -179,7 +179,7 @@ class SimManager(object):
             task_state = task_state.replace(obs=normed_obs)
             actions, policy_state = policy_net.get_actions(
                 task_state, nodes, weights, activations, policy_state)
-            
+
             if task.multi_agent_training:
                 task_state = task_state.replace(
                     obs=task_state.obs.reshape(
@@ -199,7 +199,7 @@ class SimManager(object):
         def rollout(task_states, policy_states, nodes, weights, activations, obs_params,
                     step_once_fn, max_steps):
             accumulated_rewards = jnp.zeros(nodes.shape[0])
-            
+
             valid_masks = jnp.ones(nodes.shape[0])
             ((task_states, policy_states, nodes, weights, activations, obs_params,
               accumulated_rewards, valid_masks),
@@ -207,7 +207,7 @@ class SimManager(object):
                 step_once_fn,
                 (task_states, policy_states, nodes, weights, activations, obs_params,
                  accumulated_rewards, valid_masks), (), max_steps)
-            
+
             return accumulated_rewards, obs_set, obs_mask, task_states
 
         self._policy_reset_fn = jax.jit(policy_net.reset)
@@ -333,7 +333,8 @@ class SimManager(object):
             n_repeats = self._test_n_repeats
             task_reset_func = self._valid_reset_fn
             rollout_func = self._valid_rollout_fn
-            #print(nodes,self._n_evaluations,"nodes")
+            # print(nodes,self._n_evaluations,"nodes")
+            # print(nodes)
             if not isinstance(nodes, int):
                 nodes = duplicate_params(nodes[None, :],self._n_evaluations,False)
             else:
@@ -349,7 +350,7 @@ class SimManager(object):
             n_repeats = self._n_repeats
             task_reset_func = self._train_reset_fn
             rollout_func = self._train_rollout_fn
-        
+
         # Suppose pop_size=2 and n_repeats=3.
         # For multi-agents training, params become
         #   a1, a2, ..., an  (individual 1 params)
@@ -369,7 +370,7 @@ class SimManager(object):
         nodes = duplicate_params(nodes, n_repeats, self._ma_training)
         weights = duplicate_params(weights, n_repeats, self._ma_training)
         activations = duplicate_params(activations, n_repeats, self._ma_training)
-      
+
         # params = duplicate_params(params, n_repeats, self._ma_training)
 
         self._key, reset_keys = get_task_reset_keys(

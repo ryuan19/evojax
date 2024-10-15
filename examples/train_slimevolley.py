@@ -157,14 +157,17 @@ def main(config):
     policy_reset_fn = jax.jit(policy.reset)
     step_fn = jax.jit(test_task.step)
     action_fn = jax.jit(policy.get_actions)
-    best_params = trainer.solver.best_params[None, :]
+    #best_params = trainer.solver.best_params[None, :]
+    #my best params divided into weights and activations
+    myweights, myactivations = trainer.solver.best_params
     key = jax.random.PRNGKey(0)[None, :]
 
     task_state = task_reset_fn(key)
     policy_state = policy_reset_fn(task_state)
     screens = []
     for _ in range(max_steps):
-        action, policy_state = action_fn(task_state, best_params, policy_state)
+        mynodes = len(myweights)
+        action, policy_state = action_fn(task_state, mynodes, myweights, myactivations, policy_state)
         task_state, reward, done = step_fn(task_state, action)
         screens.append(SlimeVolley.render(task_state))
 
