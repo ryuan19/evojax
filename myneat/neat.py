@@ -58,6 +58,8 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
                           assignSpecies, assignOffspring
 
   def ask(self):
+    print(f"Solver population size: {self.pop_size}")
+
     """Returns newly evolved population
     """
     if len(self.pop) == 0:
