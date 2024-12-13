@@ -142,8 +142,9 @@ def main(config):
         seed=config.seed,
         log_dir=log_dir,
         logger=logger,
+        debug=True #debug
     )
-    trainer.run(demo_mode=False,debug=True)
+    trainer.run(demo_mode=False)
 
     # Test the final model.
     src_file = os.path.join(log_dir, 'best.npz')
