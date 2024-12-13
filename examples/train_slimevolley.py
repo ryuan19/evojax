@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument(
         '--debug', action='store_true', help='Debug mode.')
     parser.add_argument(
-        '--hyp-path', type=str, default="", help='Path to hyperparams')
+        '--hyp-path', type=str, default="neat_hyperparams.json", help='Path to hyperparams')
     config, _ = parser.parse_known_args()
     return config
 
