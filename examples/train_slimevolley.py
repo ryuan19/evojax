@@ -83,21 +83,21 @@ def parse_args():
     config, _ = parser.parse_known_args()
     return config
 
-def update_hyp_slime(hyp_filepath):
-  with open(hyp_filepath) as data_file: hyp = json.load(data_file)
-  #default settings and slime env settings
-  hyp['ann_nInput']   = 12
-  hyp['ann_nOutput']  = 3
-  hyp['ann_initAct']  = 0 #first one is just 0
-  hyp['ann_absWCap']  = 2.0
-  hyp['ann_mutSigma'] = hyp['ann_absWCap'] * 0.2
-  #
-  # hyp['ann_layers']   = task.layers # if fixed toplogy is used
-  hyp['ann_actRange'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-  return hyp
-
 
 def main(config):
+    def update_hyp_slime(hyp_filepath):
+        with open(hyp_filepath) as data_file: hyp = json.load(data_file)
+        #default settings and slime env settings
+        hyp['ann_nInput']   = 12
+        hyp['ann_nOutput']  = 3
+        hyp['ann_initAct']  = 0 #first one is just 0
+        hyp['ann_absWCap']  = 2.0
+        hyp['ann_mutSigma'] = hyp['ann_absWCap'] * 0.2
+        #
+        # hyp['ann_layers']   = task.layers # if fixed toplogy is used
+        hyp['ann_actRange'] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        hyp["popSize"] = config.pop_size
+        return hyp
     log_dir = './log/slimevolley'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
@@ -124,7 +124,7 @@ def main(config):
     # )
     #hyp = loadHyp(config.hyp_path) #dont needa load env
     hyp = update_hyp_slime(config.hyp_path)
-    print(hyp)
+    #print(hyp)
     policy = NeatPolicy()
     solver = NeatAlgo(hyp) #edit hyp and load, hyperparam file
     print("Onto Trainer...")

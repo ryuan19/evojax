@@ -84,6 +84,9 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
       activations_pad = activations_pad.at[i, : len(ind.aVec)].set(ind.aVec)
 
     weightnodes = jnp.array([len(ind.wMat) for ind in self.pop])
+    print("Ask weights: \n")
+    print(weights_pad)
+    print("\n")
     return (weightnodes, weights_pad, activations_pad)
     #return self.pop       # Send child population for evaluation
 
