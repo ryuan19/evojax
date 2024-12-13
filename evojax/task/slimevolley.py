@@ -37,7 +37,7 @@ https://otoro.net/slimevolley/
 The implementation is based on:
 https://github.com/hardmaru/slimevolleygym
 """
-
+print("Installed my evojax ")
 import math
 import numpy as np
 
