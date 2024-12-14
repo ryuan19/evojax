@@ -141,8 +141,7 @@ def main(config):
         n_evaluations=config.num_tests,
         seed=config.seed,
         log_dir=log_dir,
-        logger=logger,
-        debug=True #debug
+        logger=logger
     )
     trainer.run(demo_mode=False)
 
