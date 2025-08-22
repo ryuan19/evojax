@@ -49,8 +49,11 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
     self.best_weights = None
     self.best_activations = None
     self.best_idx = None
-    self.pop_size = self.p['popSize'] #used to be initialized to 0, did not work
+    # self.pop_size = self.p['popSize'] #used to be initialized to 0, did not work
 
+  @property
+  def pop_size(self):
+      return len(self.pop) if self.pop else self.p['popSize']
 
   ''' Subfunctions '''
   from prettyNEAT.neat_src._variation import evolvePop, recombine
@@ -90,7 +93,7 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
     return (weightnodes, weights_pad, activations_pad)
     #return self.pop       # Send child population for evaluation
 
-  def tell(self,reward):
+  def tell(self, fitness):
     """Assigns fitness to current population
 
     Args:
@@ -99,10 +102,10 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
 
     """
     for i in range(len(self.pop)):
-      self.pop[i].fitness = reward[i]
+      self.pop[i].fitness = fitness[i]
       self.pop[i].nConn   = self.pop[i].nConn
 
-    self.best_idx = jnp.argmax(reward) #best idx for weights and activation
+    self.best_idx = jnp.argmax(fitness) #best idx for weights and activation
     self.best_weights = self.pop[self.best_idx].wMat #set best
     self.best_activations = self.pop[self.best_idx].aVec
     # for i in range(np.shape(reward)[0]):

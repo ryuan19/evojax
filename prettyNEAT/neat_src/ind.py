@@ -5,6 +5,7 @@ import sys
 #sys.path.append('/content/drive/MyDrive/evojax')
 #from .ann import getLayer, getNodeOrder
 from myneat.ann import * #absolute import, run from parent
+from evojax.util import create_logger
 
 import jax.numpy as jnp
 import jax
@@ -45,6 +46,7 @@ class Ind(): #need to initialize in jax
       birth   - (int)      - generation born
       species - (int)      - ID of species
     """
+    self._logger = create_logger(name="Individual")
     self.node = jnp.array(node)
     self.conn = jnp.array(conn)
     self.nInput = jnp.sum(node[1, :] == 1)
@@ -79,7 +81,21 @@ class Ind(): #need to initialize in jax
       self.nConn = jnp.sum(wVec!=0)
       return True
     else:
-      return False
+      self._logger.warning("Cycle detected in network topology, creating minimal network")
+      # Create minimal feedforward network with direct input->output connections
+      n_nodes = self.node.shape[1]
+      self.wMat = jnp.zeros((n_nodes, n_nodes))
+      n_inputs = jnp.sum(self.node[1, :] == 1) + jnp.sum(self.node[1, :] == 4)  # inputs + bias
+      n_outputs = jnp.sum(self.node[1, :] == 2)
+      output_start = n_inputs
+      for i in range(n_inputs):
+        for j in range(n_outputs):
+          self.wMat = self.wMat.at[i, output_start + j].set(0.1 * (jax.random.uniform(jax.random.PRNGKey(i*j)) - 0.5))
+      
+      self.aVec = self.node[2, :]
+      self.wVec = self.wMat.flatten()
+      self.nConn = jnp.sum(self.wVec != 0)
+      return True
 
   def createChild(self, p, innov, gen=0, mate=None, key=None):
     """Create new individual with this individual as a parent

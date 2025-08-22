@@ -176,7 +176,7 @@ class Trainer(object):
                 start_time = time.perf_counter()
                 if isinstance(self.solver, QualityDiversityMethod):
                     self.solver.observe_bd(bds)
-                self.solver.tell(reward=scores)
+                self.solver.tell(fitness=scores)
                 self._logger.debug('solver.tell time: {0:.4f}s'.format(
                     time.perf_counter() - start_time))
 
@@ -191,7 +191,7 @@ class Trainer(object):
 
                 if i > 0 and i % self._test_interval == 0:
                     bestWeights, bestActivations = self.solver.best_params
-                    bestnodes = len(bestWeights) #num nodes
+                    bestnodes = bestWeights.shape[0]  # Use matrix dimension instead of len()
                     test_scores, _ = self.sim_mgr.eval_params(
                             nodes=bestnodes, weights = bestWeights, activations = bestActivations, test=True)
                     #best_params = self.solver.best_params
@@ -216,7 +216,7 @@ class Trainer(object):
 
             # Test and save the final model.
             bestWeights, bestActivations = self.solver.best_params
-            bestnodes = len(bestWeights)
+            bestnodes = bestWeights.shape[0]
             test_scores, _ = self.sim_mgr.eval_params(
                 nodes=bestnodes, weights=bestWeights, activations=bestActivations, test=True)
             self._logger.info(

@@ -65,7 +65,7 @@ def parse_args():
     parser.add_argument(
         '--n-repeats', type=int, default=2, help='Training repetitions.') #default 16 dont work, need sq matrix
     parser.add_argument(
-        '--max-iter', type=int, default=20, help='Max training iterations.')
+        '--max-iter', type=int, default=200, help='Max training iterations.')
     parser.add_argument(
         '--test-interval', type=int, default=50, help='Test interval.')
     parser.add_argument(

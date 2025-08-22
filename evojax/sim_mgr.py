@@ -381,7 +381,9 @@ class SimManager(object):
         task_state = task_reset_func(reset_keys)
         policy_state = policy_reset_func(task_state)
         if self._num_device > 1:
-            params = split_params_for_pmap(params)
+            nodes = split_params_for_pmap(nodes)
+            weights = split_params_for_pmap(weights)
+            activations = split_params_for_pmap(activations)
             task_state = split_states_for_pmap(task_state)
             policy_state = split_states_for_pmap(policy_state)
 

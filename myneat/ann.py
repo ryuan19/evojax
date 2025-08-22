@@ -197,10 +197,14 @@ def act(nodes, weights, aVec, inPattern): #feedfwd part, used jax.jit bc lots of
   """
   total_nodes = weights.shape[0]
 
+  n_inputs = len(inPattern)
+  n_bias = 1
+  total_inputs = n_inputs + n_bias
+
   @jax.jit
   def initialize_nodeAct(inPattern):
       return jnp.concatenate(
-          [jnp.array([1.0]), inPattern, jnp.zeros(total_nodes - 13)]
+          [jnp.array([1.0]), inPattern, jnp.zeros(total_nodes - total_inputs)]
       )
 
   @jax.jit
@@ -209,9 +213,11 @@ def act(nodes, weights, aVec, inPattern): #feedfwd part, used jax.jit bc lots of
       return nodeAct.at[i].set(applyAct(aVec[i], rawAct))
 
   nodeAct = initialize_nodeAct(inPattern)
-  nodeAct = jax.lax.fori_loop(13, total_nodes, loop_body, nodeAct)
+  start_idx = total_inputs
+  nodeAct = jax.lax.fori_loop(start_idx, total_nodes, loop_body, nodeAct)
 
-  return jax.lax.dynamic_slice(nodeAct, (nodes - 3,), (3,))
+  n_outputs = 3
+  return nodeAct[-n_outputs:]
   # Turn weight vector into weight matrix
   # if np.ndim(weights) < 2:
   #     nNodes = int(np.sqrt(np.shape(weights)[0]))
@@ -268,8 +274,10 @@ def applyAct(actId, x):
   """
   # print(actId , "hellloo") # Traced<ShapedArray(float32[16])>with<DynamicJaxprTrace(level=6/0)>  ? 
   
+  actId = jnp.clip(actId.astype(int), 0, 10)
+  
   return jax.lax.switch(
-      actId.astype(int),  # The key to select which function to apply
+      actId,
       [
           lambda: x,  # Linear
           lambda: jnp.where(x > 0, 1.0, 0.0),  # Unsigned Step Function
