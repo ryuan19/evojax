@@ -6,7 +6,8 @@
   <img src="log/slimevolley/slimevolley.gif" width="600"/>
 </p>
 
-*Made with NEAT, trained on CPU. Fixed-topology only — no node/connection mutations during training. JAX recompiles the entire JIT-compiled forward pass whenever the weight matrix changes shape, which happens every time a node or connection is added. This is a JAX property in general (not CPU-specific), but on CPU each recompile takes significantly longer — turning ~3 minute iterations into multi-hour ones. Topology mutations were disabled to keep training fast.*
+*My training details: (above is gif of best run)
+Made with NEAT, trained on CPU. Fixed-topology only — no node/connection mutations during training. JAX recompiles the entire JIT-compiled forward pass whenever the weight matrix changes shape, which happens every time a node or connection is added. This is a JAX property in general (not CPU-specific), but on CPU each recompile takes significantly longer — turning ~3 minute iterations into multi-hour ones. Topology mutations were disabled to keep training fast.*
 
 ---
 
