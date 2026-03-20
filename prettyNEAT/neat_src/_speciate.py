@@ -91,6 +91,7 @@ def assignSpecies(self, species, pop, p):
     # Create new species if none exist
     species = [Species(pop[0])]
     species[0].nOffspring = p['popSize']
+    species[0].members = []  # will be filled by the loop below
     iSpec = 0
   else:
     # Remove existing members
@@ -135,7 +136,7 @@ def assignOffspring(self, species, pop, p):
 
   nSpecies = len(species)
   if nSpecies == 1:
-    species[0].offspring = p['popSize']
+    species[0].nOffspring = p['popSize']
   else:
     # -- Fitness Sharing
     # Rank all individuals
@@ -143,7 +144,7 @@ def assignOffspring(self, species, pop, p):
     #popFit = np.asarray([ind.fitness for ind in pop])
     popRank = tiedRank(popFit)
     if p['select_rankWeight'] == 'exp':
-      rankScore = 1/popRank
+      rankScore = 1/(popRank + 1)
     elif p['select_rankWeight'] == 'lin':
       rankScore = 1+jnp.abs(popRank - len(popRank))
     else:
@@ -153,8 +154,8 @@ def assignOffspring(self, species, pop, p):
     #specId = np.asarray([ind.species for ind in pop])
 
     # Best and Average Fitness of Each Species
-    speciesFit = jnp.zeros((nSpecies,1))
-    speciesTop = jnp.zeros((nSpecies,1))
+    speciesFit = jnp.zeros(nSpecies)
+    speciesTop = jnp.zeros(nSpecies)
     for iSpec in range(nSpecies):
       if not jnp.any(specId == iSpec):
         speciesFit = speciesFit.at[iSpec].set(0)
@@ -191,7 +192,7 @@ def assignOffspring(self, species, pop, p):
 
     # -- Assign Offspring
     if jnp.sum(speciesFit) == 0:
-      speciesFit = jnp.ones((nSpecies,1))
+      speciesFit = jnp.ones(nSpecies)
       print("WARN: Entire population stagnant, continuing without extinction")
 
     offspring = bestIntSplit(speciesFit, p['popSize'])

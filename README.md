@@ -1,5 +1,18 @@
 # EvoJAX: Hardware-Accelerated Neuroevolution
 
+## SlimeVolley — trained with NEAT
+
+<p align="center">
+  <img src="log/slimevolley/slimevolley.gif" width="600"/>
+</p>
+
+*My training details: (above is gif of best run)
+Made with NEAT, trained on CPU. Fixed-topology only — no node/connection mutations during training. JAX recompiles the entire JIT-compiled forward pass whenever the weight matrix changes shape, which happens every time a node or connection is added. This is a JAX property in general (not CPU-specific), but on CPU each recompile takes significantly longer — turning ~3 minute iterations into multi-hour ones. Topology mutations were disabled to keep training fast.*
+
+---
+
+
+
 EvoJAX is a scalable, general purpose, hardware-accelerated [neuroevolution](https://en.wikipedia.org/wiki/Neuroevolution) toolkit. Built on top of the JAX library, this toolkit enables neuroevolution algorithms to work with neural networks running in parallel across multiple TPU/GPUs. EvoJAX achieves very high performance by implementing the evolution algorithm, neural network and task all in NumPy, which is compiled just-in-time to run on accelerators.
 
 This repo also includes several extensible examples of EvoJAX for a wide range of tasks, including supervised learning, reinforcement learning and generative art, demonstrating how EvoJAX can run your evolution experiments within minutes on a single accelerator, compared to hours or days when using CPUs.

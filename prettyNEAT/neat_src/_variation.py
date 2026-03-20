@@ -65,7 +65,7 @@ def recombine(self, species, innov, gen,key):
     pop[-numberToCull:] = []
 
   # Elitism - keep best individuals unchanged
-  nElites = int(jnp.floor(len(pop)*p['select_eliteRatio']))
+  nElites = min(int(jnp.floor(len(pop)*p['select_eliteRatio'])), nOffspring)
   for i in range(nElites):
     children.append(pop[i])
     nOffspring -= 1
@@ -101,7 +101,8 @@ def recombine(self, species, innov, gen,key):
       # Crossover
       child, innov, key = pop[parents[0,i]].createChild(p,innov,gen,mate=pop[parents[1,i]], key=key)
 
-    child.express()
+    if not child.express():
+      child = pop[parents[0, i]]  # fallback: use parent if topology is invalid
     children.append(child)
 
   return children, innov, key
