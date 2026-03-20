@@ -46,7 +46,7 @@ def tiedRank(X):
   X_sorted = X[sorter]
   # Identify where the values change to detect ties
   diffs = X_sorted[1:] != X_sorted[:-1] #find ties
-  group_ids = jnp.cumsum(jnp.concatenate(([0], diffs))) #assign groups
+  group_ids = jnp.cumsum(jnp.concatenate((jnp.array([0]), diffs))) #assign groups
   unique_group_ids, group_starts, group_counts = jnp.unique(
       group_ids, return_index=True, return_counts=True
   )

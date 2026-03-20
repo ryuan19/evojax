@@ -196,6 +196,7 @@ def act(nodes, weights, aVec, inPattern): #feedfwd part, used jax.jit bc lots of
                 [1 X nOutput] or [nSamples X nOutput]
   """
   total_nodes = weights.shape[0]
+  weights = jnp.where(jnp.isnan(weights), 0.0, weights)  # disabled connections treated as 0
 
   @jax.jit
   def initialize_nodeAct(inPattern):
@@ -449,7 +450,10 @@ class NeatPolicy(PolicyNetwork): #feed fwd neural net
     ) -> Tuple[jnp.ndarray, PolicyState]:
         
         def get_single_action(nodes, weights, activations, obs):
-            return jax.nn.softmax(act(nodes, weights, activations, obs), axis=-1)
+            # Threshold at 0.5 to produce binary {0, 1} outputs.
+            # Without this, sigmoid always outputs > 0, so forward and
+            # backward always both fire and cancel, preventing any movement.
+            return (jax.nn.sigmoid(act(nodes, weights, activations, obs)) > 0.5).astype(jnp.float32)
 
         #get_multiple_action = jax.vmap(get_single_action, in_axes=(None, None, None, 0))
         get_multiple_action = jax.vmap(get_single_action)

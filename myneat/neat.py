@@ -58,8 +58,6 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
                           assignSpecies, assignOffspring
 
   def ask(self):
-    print(f"Solver population size: {self.pop_size}")
-
     """Returns newly evolved population
     """
     if len(self.pop) == 0:
@@ -75,7 +73,7 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
     #jax only deal with arr of equal sz? need pad or reduce arr
       # try padding and slicing to lowest...
     #need to retun weights, not ind obj
-    largest_dim = max(len(indiv.wMat) for indiv in self.pop) #find largest indiv, diff sizes cus evolve
+    largest_dim = self.p['ann_maxNodes']  # fixed size so JAX never recompiles when topology grows
     weights_pad = jnp.zeros((len(self.pop), largest_dim, largest_dim))
     activations_pad = jnp.zeros((len(self.pop), largest_dim))
     for i, ind in enumerate(self.pop):
@@ -105,6 +103,7 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
     self.best_idx = jnp.argmax(reward) #best idx for weights and activation
     self.best_weights = self.pop[self.best_idx].wMat #set best
     self.best_activations = self.pop[self.best_idx].aVec
+    self.gen += 1
     # for i in range(np.shape(reward)[0]):
     #   self.pop[i].fitness = reward[i]
     #   self.pop[i].nConn   = self.pop[i].nConn
@@ -211,7 +210,7 @@ class NeatAlgo(NEAlgorithm): #need ask,tell, best params, state stuff is optiona
     #     operand=None  # no input is required for the functions
     # ) #no work
 
-    if self.p['alg_probMoo'] < rand_val:
+    if rand_val < self.p['alg_probMoo']:
       rank = nsga_sort(objVals[:,[0,1]])
     else: # Single objective
       rank = rankArray(-objVals[:,0])

@@ -45,8 +45,7 @@ def get_task_reset_keys(key: jnp.ndarray,
         if test:
             reset_keys = random.split(subkey, n_tests * n_repeats)
         else:
-            reset_keys = random.split(subkey, n_repeats)
-            reset_keys = jnp.tile(reset_keys, (pop_size, 1))
+            reset_keys = random.split(subkey, n_repeats * pop_size)
     return key, reset_keys
 
 
